@@ -1,0 +1,35 @@
+# LOCAL DEVELOPMENT ONLY.
+# Production deploys to a Contabo Apache server via GitHub Actions (no Docker).
+# This file only provisions Postgres (with pgvector) and Redis for local work.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: murimi_db
+    environment:
+      POSTGRES_USER: murimi
+      POSTGRES_PASSWORD: murimi
+      POSTGRES_DB: murimi
+    ports:
+      - "5432:5432"
+    volumes:
+      - murimi_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U murimi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: murimi_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  murimi_pgdata:

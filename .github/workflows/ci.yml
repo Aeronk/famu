@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          pip install -r requirements-dev.txt
+
+      - name: Ruff lint
+        run: ruff check app tests scripts
+
+      - name: Run tests (SQLite, in-memory)
+        run: pytest -q
+
+  migrate-postgres:
+    # Validates the Postgres + pgvector migration path used in production.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: murimi
+          POSTGRES_PASSWORD: murimi
+          POSTGRES_DB: murimi
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U murimi"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://murimi:murimi@localhost:5432/murimi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Alembic upgrade head
+        run: alembic upgrade head
