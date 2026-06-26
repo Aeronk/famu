@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -74,10 +76,16 @@ def create_app() -> FastAPI:
     async def root():
         return {
             "name": settings.APP_NAME,
+            "dashboard": "/app",
             "docs": "/docs",
             "health": "/health",
             "api": settings.API_V1_PREFIX,
         }
+
+    # Lightweight web dashboard (vanilla HTML/JS) served from the same origin.
+    web_dir = Path(__file__).parent / "web"
+    if web_dir.exists():
+        app.mount("/app", StaticFiles(directory=str(web_dir), html=True), name="web")
 
     return app
 

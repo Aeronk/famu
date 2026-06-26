@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Murimi OS — Dashboard</title>
+<style>
+  :root{
+    --green:#1f7a3d; --green-dark:#155c2c; --green-light:#e6f4ea;
+    --bg:#f4f6f5; --card:#fff; --ink:#1c2421; --muted:#6b7a72; --border:#e2e8e4;
+    --amber:#c77d11; --red:#c0392b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  a{color:var(--green)}
+  .hidden{display:none!important}
+  /* Login */
+  #login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1f7a3d,#0e3d1d)}
+  .login-card{background:#fff;padding:36px;border-radius:16px;width:340px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .login-card h1{margin:0 0 4px;font-size:22px}
+  .login-card p{margin:0 0 20px;color:var(--muted);font-size:13px}
+  .brand-emoji{font-size:30px}
+  /* Layout */
+  header{background:var(--green);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header .logo{font-weight:700;font-size:18px}
+  header .spacer{flex:1}
+  header .who{font-size:13px;opacity:.9}
+  nav{background:var(--green-dark);display:flex;gap:2px;padding:0 12px;overflow-x:auto}
+  nav button{background:none;border:none;color:#cfe8d6;padding:12px 16px;cursor:pointer;font-size:14px;border-bottom:3px solid transparent;white-space:nowrap}
+  nav button.active{color:#fff;border-bottom-color:#fff;font-weight:600}
+  main{padding:22px;max-width:1100px;margin:0 auto}
+  h2{margin:0 0 16px;font-size:20px}
+  /* Cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .stat .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .stat .value{font-size:26px;font-weight:700;margin-top:6px}
+  .section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px}
+  .section h3{margin:0 0 14px;font-size:16px}
+  /* Forms */
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+  textarea{min-height:64px;resize:vertical}
+  button.btn{background:var(--green);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-top:12px}
+  button.btn:hover{background:var(--green-dark)}
+  button.ghost{background:#fff;color:var(--green);border:1px solid var(--green)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;background:var(--green-light);color:var(--green-dark)}
+  .muted{color:var(--muted)}
+  pre{background:#0e1f15;color:#d6f5df;padding:14px;border-radius:10px;overflow:auto;font-size:13px}
+  .chat-reply{background:var(--green-light);border-left:4px solid var(--green);padding:12px;border-radius:8px;margin-top:12px;white-space:pre-wrap}
+  .err{color:var(--red);font-size:13px;margin-top:8px}
+  .src{font-size:12px;color:var(--muted);margin-top:6px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.split{grid-template-columns:1fr}.row3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-card">
+    <div class="brand-emoji">🌾</div>
+    <h1>Murimi OS</h1>
+    <p>AI Farm Operating System</p>
+    <label>Email</label>
+    <input id="email" value="admin@greenvalley.co" />
+    <label>Password</label>
+    <input id="password" type="password" value="ChangeMe12345" />
+    <button class="btn" style="width:100%" onclick="doLogin()">Sign in</button>
+    <div id="loginErr" class="err"></div>
+    <p style="margin-top:16px;font-size:12px">Demo: admin@greenvalley.co / ChangeMe12345</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <span class="logo">🌾 Murimi OS</span>
+    <span class="spacer"></span>
+    <span class="who" id="who"></span>
+    <button class="btn ghost" style="margin:0;padding:6px 12px" onclick="logout()">Logout</button>
+  </header>
+  <nav id="nav"></nav>
+  <main id="view"></main>
+</div>
+
+<script>
+const API='/api/v1';
+let token = localStorage.getItem('murimi_token');
+let me = null;
+let farmsCache = [];
+
+const TABS = [
+  ['dashboard','Dashboard'], ['farms','Farms'], ['crops','Crops'],
+  ['livestock','Livestock'], ['finance','Finance'], ['assistant','AI Assistant'],
+  ['advisory','Advisory'], ['predict','Predict & Simulate'],
+];
+let current = 'dashboard';
+
+async function api(path, {method='GET', body, raw=false}={}){
+  const headers={'Content-Type':'application/json'};
+  if(token) headers.Authorization='Bearer '+token;
+  const res = await fetch((raw?'':API)+path,{method,headers,body:body?JSON.stringify(body):undefined});
+  let data={}; try{ data=await res.json(); }catch(e){}
+  if(res.status===401){ logout(); throw new Error('Session expired'); }
+  if(!res.ok) throw new Error((data&&data.error&&data.error.message)||res.statusText);
+  return data;
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function money(n){ return n==null?'-':'$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function doLogin(){
+  const email=document.getElementById('email').value;
+  const password=document.getElementById('password').value;
+  try{
+    const d=await api('/auth/login',{method:'POST',body:{email,password}});
+    token=d.access_token; localStorage.setItem('murimi_token',token);
+    await boot();
+  }catch(e){ document.getElementById('loginErr').textContent=e.message; }
+}
+function logout(){
+  token=null; localStorage.removeItem('murimi_token');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login').classList.remove('hidden');
+}
+
+async function boot(){
+  try{ me=await api('/auth/me'); }catch(e){ logout(); return; }
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('who').textContent=`${me.full_name||me.email||'User'} · ${me.role}`;
+  const nav=document.getElementById('nav'); nav.innerHTML='';
+  TABS.forEach(([id,label])=>{
+    const b=document.createElement('button'); b.textContent=label; b.dataset.id=id;
+    b.className=id===current?'active':''; b.onclick=()=>go(id); nav.appendChild(b);
+  });
+  go(current);
+}
+function go(id){
+  current=id;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
+  ({dashboard:renderDashboard,farms:renderFarms,crops:renderCrops,livestock:renderLivestock,
+    finance:renderFinance,assistant:renderAssistant,advisory:renderAdvisory,predict:renderPredict}[id])();
+}
+const view=()=>document.getElementById('view');
+function loading(){ view().innerHTML='<p class="muted">Loading…</p>'; }
+
+/* ---------------- Dashboard ---------------- */
+async function renderDashboard(){
+  loading();
+  const [ov,yields,weather,herd] = await Promise.all([
+    api('/dashboard/overview'), api('/dashboard/yields'),
+    api('/dashboard/weather'), api('/dashboard/livestock')
+  ]);
+  const cards=[
+    ['Farms',ov.farms],['Active crop cycles',ov.active_crop_cycles],['Livestock head',ov.livestock_head],
+    ['Income',money(ov.total_income)],['Expenses',money(ov.total_expense)],['Net position',money(ov.net_position)],
+    ['Weather alerts',ov.weather_alerts],['Herd total',herd.total_head],
+  ];
+  let html=`<h2>Dashboard</h2><div class="grid">`+
+    cards.map(([l,v])=>`<div class="card stat"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('')+`</div>`;
+  html+=`<div class="split" style="margin-top:18px">`;
+  html+=`<div class="section"><h3>Yields by crop</h3>`+ (yields.by_crop.length?
+    `<table><tr><th>Crop</th><th>Cycles</th><th>Harvest</th><th>Yield/ha</th></tr>`+
+    yields.by_crop.map(c=>`<tr><td><span class="pill">${esc(c.crop)}</span></td><td>${c.cycles}</td><td>${c.total_harvest}</td><td>${c.yield_per_ha}</td></tr>`).join('')+`</table>`
+    :`<p class="muted">No harvest data yet.</p>`)+`</div>`;
+  const w=weather.latest;
+  html+=`<div class="section"><h3>Latest weather</h3>`+(w?
+    `<p>🌡️ ${w.temp_c}°C &nbsp; 💧 ${w.rainfall_mm} mm &nbsp; 💨 ${w.wind_kph} kph &nbsp; humidity ${w.humidity}%</p><p class="muted">source: ${esc(w.source)}</p>`
+    :`<p class="muted">No weather synced yet. Try the Predict tab or sync via API.</p>`)+`</div>`;
+  html+=`</div>`;
+  view().innerHTML=html;
+}
+
+/* ---------------- Farms ---------------- */
+async function loadFarms(){ const p=await api('/farms?page_size=200'); farmsCache=p.items; return p; }
+async function renderFarms(){
+  loading();
+  const p=await loadFarms();
+  view().innerHTML=`<h2>Farms</h2>
+  <div class="section"><h3>Add a farm</h3>
+    <div class="row3">
+      <div><label>Name</label><input id="f_name"/></div>
+      <div><label>Province</label><input id="f_prov"/></div>
+      <div><label>Size (ha)</label><input id="f_size" type="number" step="0.1"/></div>
+    </div>
+    <div class="row3">
+      <div><label>Soil type</label><input id="f_soil"/></div>
+      <div><label>Water source</label><input id="f_water"/></div>
+      <div><label>Irrigation</label><input id="f_irr"/></div>
+    </div>
+    <button class="btn" onclick="addFarm()">Create farm</button><div id="f_err" class="err"></div>
+  </div>
+  <div class="section"><h3>Your farms (${p.total})</h3>
+    <table><tr><th>Name</th><th>Province</th><th>Size</th><th>Soil</th><th>Irrigation</th></tr>
+    ${p.items.map(f=>`<tr><td>${esc(f.name)}</td><td>${esc(f.province)||'-'}</td><td>${f.size_ha??'-'}</td><td>${esc(f.soil_type)||'-'}</td><td>${esc(f.irrigation_type)||'-'}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No farms yet.</td></tr>'}
+    </table></div>`;
+}
+async function addFarm(){
+  try{
+    await api('/farms',{method:'POST',body:{
+      name:val('f_name'),province:val('f_prov'),size_ha:num('f_size'),
+      soil_type:val('f_soil'),water_source:val('f_water'),irrigation_type:val('f_irr')}});
+    renderFarms();
+  }catch(e){ document.getElementById('f_err').textContent=e.message; }
+}
+
+/* ---------------- Crops ---------------- */
+const CROPS=['maize','tobacco','soybeans','wheat','cotton','groundnuts','vegetables'];
+async function renderCrops(){
+  loading();
+  await loadFarms();
+  const p=await api('/crops/cycles?page_size=200');
+  view().innerHTML=`<h2>Crops</h2>
+  <div class="section"><h3>New crop cycle</h3>
+    <div class="row3">
+      <div><label>Farm</label><select id="c_farm">${farmOptions()}</select></div>
+      <div><label>Crop</label><select id="c_crop">${CROPS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div><label>Area (ha)</label><input id="c_area" type="number" step="0.1" value="1"/></div>
+    </div>
+    <div class="row">
+      <div><label>Variety</label><input id="c_var"/></div>
+      <div><label>Planting date</label><input id="c_date" type="date"/></div>
+    </div>
+    <button class="btn" onclick="addCycle()" ${farmsCache.length?'':'disabled'}>Create cycle</button>
+    ${farmsCache.length?'':'<p class="muted">Add a farm first.</p>'}
+    <div id="c_err" class="err"></div></div>
+  <div class="section"><h3>Crop cycles (${p.total})</h3>
+    <table><tr><th>Crop</th><th>Variety</th><th>Area</th><th>Planted</th><th>Status</th></tr>
+    ${p.items.map(c=>`<tr><td><span class="pill">${esc(c.crop_type)}</span></td><td>${esc(c.variety)||'-'}</td><td>${c.area_ha}</td><td>${esc(c.planting_date)||'-'}</td><td>${esc(c.status)}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No cycles yet.</td></tr>'}
+    </table></div>`;
+}
+async function addCycle(){
+  try{
+    await api('/crops/cycles',{method:'POST',body:{
+      farm_id:val('c_farm'),crop_type:val('c_crop'),area_ha:num('c_area'),
+      variety:val('c_var')||null,planting_date:val('c_date')||null,status:'planted'}});
+    renderCrops();
+  }catch(e){ document.getElementById('c_err').textContent=e.message; }
+}
+
+/* ---------------- Livestock ---------------- */
+const SPECIES=['cattle','goats','sheep','pigs','poultry'];
+async function renderLivestock(){
+  loading();
+  await loadFarms();
+  const [p,an]=await Promise.all([api('/livestock?page_size=200'),api('/dashboard/livestock')]);
+  view().innerHTML=`<h2>Livestock</h2>
+  <div class="grid">
+    <div class="card stat"><div class="label">Total head</div><div class="value">${an.total_head}</div></div>
+    <div class="card stat"><div class="label">Avg weight</div><div class="value">${an.average_weight_kg} kg</div></div>
+    <div class="card stat"><div class="label">Vax due (30d)</div><div class="value">${an.vaccinations_due_30d}</div></div>
+    <div class="card stat"><div class="label">Disease (90d)</div><div class="value">${an.disease_events_90d}</div></div>
+  </div>
+  <div class="section" style="margin-top:18px"><h3>Add animal</h3>
+    <div class="row3">
+      <div><label>Farm</label><select id="l_farm">${farmOptions()}</select></div>
+      <div><label>Species</label><select id="l_sp">${SPECIES.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div><label>Tag number</label><input id="l_tag"/></div>
+    </div>
+    <div class="row3">
+      <div><label>Breed</label><input id="l_breed"/></div>
+      <div><label>Sex</label><select id="l_sex"><option value="">-</option><option>female</option><option>male</option></select></div>
+      <div><label>Weight (kg)</label><input id="l_wt" type="number" step="0.1"/></div>
+    </div>
+    <button class="btn" onclick="addAnimal()" ${farmsCache.length?'':'disabled'}>Add animal</button>
+    <div id="l_err" class="err"></div></div>
+  <div class="section"><h3>Herd (${p.total})</h3>
+    <table><tr><th>Species</th><th>Tag</th><th>Breed</th><th>Sex</th><th>Weight</th><th>Status</th></tr>
+    ${p.items.map(a=>`<tr><td><span class="pill">${esc(a.species)}</span></td><td>${esc(a.tag_number)||'-'}</td><td>${esc(a.breed)||'-'}</td><td>${esc(a.sex)||'-'}</td><td>${a.weight_kg??'-'}</td><td>${esc(a.status)}</td></tr>`).join('')||'<tr><td colspan=6 class=muted>No animals yet.</td></tr>'}
+    </table></div>`;
+}
+async function addAnimal(){
+  try{
+    await api('/livestock',{method:'POST',body:{
+      farm_id:val('l_farm'),species:val('l_sp'),tag_number:val('l_tag')||null,
+      breed:val('l_breed')||null,sex:val('l_sex')||null,weight_kg:num('l_wt')}});
+    renderLivestock();
+  }catch(e){ document.getElementById('l_err').textContent=e.message; }
+}
+
+/* ---------------- Finance ---------------- */
+async function renderFinance(){
+  loading();
+  const prof=await api('/finance/reports/profitability');
+  view().innerHTML=`<h2>Finance</h2>
+  <div class="grid">
+    <div class="card stat"><div class="label">Income</div><div class="value">${money(prof.total_income)}</div></div>
+    <div class="card stat"><div class="label">Expenses</div><div class="value">${money(prof.total_expense)}</div></div>
+    <div class="card stat"><div class="label">Gross profit</div><div class="value">${money(prof.gross_profit)}</div></div>
+    <div class="card stat"><div class="label">Margin</div><div class="value">${prof.margin_pct}%</div></div>
+  </div>
+  <div class="split" style="margin-top:18px">
+    <div class="section"><h3>Record income</h3>
+      <label>Source</label><input id="i_src" value="sales"/>
+      <div class="row"><div><label>Amount</label><input id="i_amt" type="number" step="0.01"/></div>
+      <div><label>Date</label><input id="i_date" type="date"/></div></div>
+      <button class="btn" onclick="addIncome()">Add income</button><div id="i_err" class="err"></div></div>
+    <div class="section"><h3>Record expense</h3>
+      <label>Category</label><input id="e_cat" value="inputs"/>
+      <div class="row"><div><label>Amount</label><input id="e_amt" type="number" step="0.01"/></div>
+      <div><label>Date</label><input id="e_date" type="date"/></div></div>
+      <button class="btn" onclick="addExpense()">Add expense</button><div id="e_err" class="err"></div></div>
+  </div>`;
+}
+async function addIncome(){ try{ await api('/finance/incomes',{method:'POST',body:{source:val('i_src'),amount:num('i_amt'),txn_date:val('i_date')||null}}); renderFinance(); }catch(e){ document.getElementById('i_err').textContent=e.message; } }
+async function addExpense(){ try{ await api('/finance/expenses',{method:'POST',body:{category:val('e_cat'),amount:num('e_amt'),txn_date:val('e_date')||null}}); renderFinance(); }catch(e){ document.getElementById('e_err').textContent=e.message; } }
+
+/* ---------------- AI Assistant (data-capture agent) ---------------- */
+function renderAssistant(){
+  view().innerHTML=`<h2>AI Assistant</h2>
+  <div class="section">
+    <p class="muted">Type like a farmer would on WhatsApp — the agent extracts intent &amp; entities and creates records.</p>
+    <label>Message</label>
+    <input id="a_text" placeholder="e.g. I planted 2 hectares of maize" value="I planted 2 hectares of maize"/>
+    <button class="btn" onclick="sendAssistant()">Send</button>
+    <div id="a_err" class="err"></div>
+    <div id="a_out"></div>
+    <p class="muted" style="margin-top:14px">Try: “I vaccinated 20 cattle today”, “I harvested 800 kg of maize”, “I spent $150 on fertilizer”.</p>
+  </div>`;
+}
+async function sendAssistant(){
+  document.getElementById('a_err').textContent='';
+  try{
+    const d=await api('/ai/chat',{method:'POST',body:{text:val('a_text')}});
+    document.getElementById('a_out').innerHTML=
+      `<div class="chat-reply">${esc(d.reply)}</div>
+       <p class="src">intent: <b>${esc(d.intent)}</b> · language: ${esc(d.language)} ${d.record_id?'· record created ✓':''}</p>`;
+  }catch(e){ document.getElementById('a_err').textContent=e.message; }
+}
+
+/* ---------------- Advisory (RAG) ---------------- */
+function renderAdvisory(){
+  view().innerHTML=`<h2>Advisory</h2>
+  <div class="section">
+    <p class="muted">Ask an agronomy / livestock question — answered using the knowledge base (RAG).</p>
+    <label>Question</label>
+    <textarea id="q_text">When should I plant maize and what fertilizer should I use?</textarea>
+    <button class="btn" onclick="askAdvisory()">Ask</button>
+    <div id="q_err" class="err"></div>
+    <div id="q_out"></div>
+  </div>`;
+}
+async function askAdvisory(){
+  document.getElementById('q_err').textContent='';
+  try{
+    const d=await api('/ai/ask',{method:'POST',body:{question:val('q_text')}});
+    const src=(d.sources||[]).map(s=>`${esc(s.source)}: ${esc(s.title)} (${s.score})`).join(' · ');
+    document.getElementById('q_out').innerHTML=
+      `<div class="chat-reply">${esc(d.answer)}</div>${src?`<p class="src">sources — ${src}</p>`:''}`;
+  }catch(e){ document.getElementById('q_err').textContent=e.message; }
+}
+
+/* ---------------- Predict & Simulate ---------------- */
+function renderPredict(){
+  view().innerHTML=`<h2>Predict &amp; Simulate</h2>
+  <div class="split">
+    <div class="section"><h3>Yield prediction</h3>
+      <div class="row"><div><label>Crop</label><select id="y_crop">${CROPS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div><label>Area (ha)</label><input id="y_area" type="number" value="2" step="0.1"/></div></div>
+      <label>Rainfall (mm)</label><input id="y_rain" type="number" value="650"/>
+      <button class="btn" onclick="predictYield()">Predict</button>
+      <div id="y_out"></div></div>
+    <div class="section"><h3>Scenario simulation</h3>
+      <div class="row"><div><label>Base crop</label><select id="s_crop">${CROPS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div><label>Switch to</label><select id="s_new">${CROPS.map(c=>`<option ${c==='vegetables'?'selected':''}>${c}</option>`).join('')}</select></div></div>
+      <div class="row3">
+        <div><label>Area (ha)</label><input id="s_area" type="number" value="2" step="0.1"/></div>
+        <div><label>Rainfall Δ%</label><input id="s_rain" type="number" value="-20"/></div>
+        <div><label>Price/tonne</label><input id="s_price" type="number" value="300"/></div>
+      </div>
+      <button class="btn" onclick="runSim()">Run simulation</button>
+      <div id="s_out"></div></div>
+  </div>`;
+}
+async function predictYield(){
+  try{
+    const d=await api('/predictions/yield',{method:'POST',body:{crop:val('y_crop'),area:num('y_area'),rainfall_mm:num('y_rain')}});
+    const o=d.output;
+    document.getElementById('y_out').innerHTML=`<div class="chat-reply">Expected yield: <b>${o.expected_yield} t</b> (${o.expected_yield_per_ha} t/ha)<br>Confidence: ${o.confidence}</div>`;
+  }catch(e){ document.getElementById('y_out').innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+}
+async function runSim(){
+  try{
+    const d=await api('/simulations/run',{method:'POST',body:{
+      crop:val('s_crop'),area:num('s_area'),rainfall_mm:550,price_per_tonne:num('s_price'),costs:400,
+      scenario:{new_crop:val('s_new'),rainfall_delta_pct:num('s_rain')}}});
+    const b=d.baseline,s=d.scenario,dl=d.deltas;
+    document.getElementById('s_out').innerHTML=`<div class="chat-reply">
+      <b>${b.crop}</b>: yield ${b.expected_yield}t · profit ${money(b.profit)}<br>
+      <b>${s.crop}</b>: yield ${s.expected_yield}t · profit ${money(s.profit)}<br>
+      Profit change: <b>${money(dl.profit.absolute)}</b> (${dl.profit.pct}%)</div>`;
+  }catch(e){ document.getElementById('s_out').innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+}
+
+/* ---------------- helpers ---------------- */
+function val(id){ const e=document.getElementById(id); return e?e.value:''; }
+function num(id){ const v=val(id); return v===''?null:Number(v); }
+function farmOptions(){ return farmsCache.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join(''); }
+
+/* boot */
+if(token){ boot(); } else { document.getElementById('login').classList.remove('hidden'); }
+</script>
+</body>
+</html>
