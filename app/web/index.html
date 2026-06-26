@@ -99,7 +99,7 @@ let farmsCache = [];
 const TABS = [
   ['dashboard','Dashboard'], ['farms','Farms'], ['crops','Crops'],
   ['livestock','Livestock'], ['finance','Finance'], ['assistant','AI Assistant'],
-  ['advisory','Advisory'], ['predict','Predict & Simulate'],
+  ['advisory','Advisory'], ['predict','Predict & Simulate'], ['data','AI Data'],
 ];
 let current = 'dashboard';
 
@@ -147,7 +147,8 @@ function go(id){
   current=id;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
   ({dashboard:renderDashboard,farms:renderFarms,crops:renderCrops,livestock:renderLivestock,
-    finance:renderFinance,assistant:renderAssistant,advisory:renderAdvisory,predict:renderPredict}[id])();
+    finance:renderFinance,assistant:renderAssistant,advisory:renderAdvisory,predict:renderPredict,
+    data:renderData}[id])();
 }
 const view=()=>document.getElementById('view');
 function loading(){ view().innerHTML='<p class="muted">Loading…</p>'; }
@@ -398,6 +399,89 @@ async function runSim(){
       <b>${s.crop}</b>: yield ${s.expected_yield}t · profit ${money(s.profit)}<br>
       Profit change: <b>${money(dl.profit.absolute)}</b> (${dl.profit.pct}%)</div>`;
   }catch(e){ document.getElementById('s_out').innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+}
+
+/* ---------------- AI Data (training datasets) ---------------- */
+let dataFilter = {dataset:'', status:''};
+async function renderData(){
+  loading();
+  const stats = await api('/datasets');
+  const cards = stats.datasets.length
+    ? stats.datasets.map(d=>`<div class="card stat"><div class="label">${esc(d.dataset)}</div>
+        <div class="value">${d.total}</div>
+        <div class="src">✓ ${d.verified} verified · ${d.unverified} pending · ${d.rejected} rejected</div></div>`).join('')
+    : '<p class="muted">No training examples yet. Add a harvest, chat with the assistant, or analyze an image — data is captured automatically.</p>';
+  view().innerHTML=`<h2>AI Training Data</h2>
+  <p class="muted">Structured, labeled examples captured from every channel (web · mobile · WhatsApp · API) for model learning. Review &amp; verify to build gold labels, then export.</p>
+  <div class="grid">${cards}</div>
+  <div class="section" style="margin-top:18px">
+    <h3>Curate &amp; export</h3>
+    <div class="row3">
+      <div><label>Dataset</label>
+        <select id="d_set" onchange="onDataFilter()">
+          <option value="">(all)</option>
+          <option value="yield">yield</option><option value="disease">disease</option>
+          <option value="nlu_intent">nlu_intent</option><option value="vision">vision</option>
+        </select></div>
+      <div><label>Status</label>
+        <select id="d_status" onchange="onDataFilter()">
+          <option value="">(all)</option><option value="unverified">unverified</option>
+          <option value="verified">verified</option><option value="rejected">rejected</option>
+        </select></div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn" style="margin:0" onclick="buildYield()">Build yield dataset</button>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn ghost" onclick="exportData('jsonl')">⬇ Export JSONL</button>
+      <button class="btn ghost" onclick="exportData('csv')">⬇ Export CSV</button>
+      <span class="muted" id="d_msg"></span>
+    </div>
+  </div>
+  <div class="section"><div id="d_list" class="muted">Loading examples…</div></div>`;
+  if(stats.datasets.length){ document.getElementById('d_set').value=dataFilter.dataset; }
+  loadExamples();
+}
+function onDataFilter(){ dataFilter.dataset=val('d_set'); dataFilter.status=val('d_status'); loadExamples(); }
+async function loadExamples(){
+  const q=new URLSearchParams({page_size:'50'});
+  if(dataFilter.dataset) q.set('dataset',dataFilter.dataset);
+  if(dataFilter.status) q.set('status',dataFilter.status);
+  const p=await api('/datasets/examples?'+q.toString());
+  const el=document.getElementById('d_list'); if(!el) return;
+  if(!p.items.length){ el.innerHTML='<p class="muted">No examples for this filter.</p>'; return; }
+  el.innerHTML=`<table><tr><th>Dataset</th><th>Channel</th><th>Features</th><th>Label</th><th>Status</th><th></th></tr>`+
+    p.items.map(x=>`<tr>
+      <td><span class="pill">${esc(x.dataset)}</span></td>
+      <td>${esc(x.channel)}</td>
+      <td><code style="font-size:12px">${esc(JSON.stringify(x.features).slice(0,90))}</code></td>
+      <td><code style="font-size:12px">${esc(JSON.stringify(x.label).slice(0,70))}</code></td>
+      <td>${esc(x.status)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn" style="margin:0;padding:4px 9px" onclick="setStatus('${x.id}','verified')">✓</button>
+        <button class="btn ghost" style="margin:0;padding:4px 9px" onclick="setStatus('${x.id}','rejected')">✕</button>
+      </td></tr>`).join('')+`</table><p class="muted" style="margin-top:8px">${p.total} total</p>`;
+}
+async function buildYield(){
+  document.getElementById('d_msg').textContent='Building…';
+  try{ const r=await api('/datasets/build/yield',{method:'POST'});
+    document.getElementById('d_msg').textContent=`Built ${r.examples_built} yield example(s).`; renderData();
+  }catch(e){ document.getElementById('d_msg').textContent=e.message; }
+}
+async function setStatus(id,status){
+  await api('/datasets/examples/'+id,{method:'PATCH',body:{status}});
+  loadExamples();
+}
+async function exportData(format){
+  const ds=val('d_set')||'yield';
+  const q=new URLSearchParams({dataset:ds,format});
+  if(val('d_status')) q.set('status',val('d_status'));
+  const res=await fetch(API+'/datasets/export?'+q.toString(),{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok){ document.getElementById('d_msg').textContent='Export failed'; return; }
+  const blob=await res.blob();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=ds+'.'+format; a.click(); URL.revokeObjectURL(a.href);
+  document.getElementById('d_msg').textContent=`Exported ${ds}.${format}`;
 }
 
 /* ---------------- helpers ---------------- */

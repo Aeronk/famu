@@ -29,6 +29,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "simulation:*",
         "analytics:*",
         "notification:*",
+        "dataset:*",
     },
     Role.FARM_MANAGER: {
         "farm:*",
@@ -43,6 +44,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "simulation:*",
         "analytics:read",
         "notification:read",
+        "dataset:*",
     },
     Role.FARMER: {
         "farm:read",
@@ -73,6 +75,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "simulation:*",
         "analytics:read",
         "notification:create",
+        "dataset:*",
     },
     Role.VIEWER: {
         "farm:read",

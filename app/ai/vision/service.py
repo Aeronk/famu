@@ -70,6 +70,14 @@ class VisionService:
         )
         self.session.add(analysis)
         await self.session.flush()
+
+        # Capture the image diagnosis as a training example (best-effort).
+        try:
+            from app.datasets.service import DatasetService
+
+            await DatasetService(self.session, tenant_id).capture_vision(analysis)
+        except Exception:  # noqa: BLE001
+            pass
         return analysis
 
     async def _run_model(self, image_url, image_b64, analysis_type) -> dict:

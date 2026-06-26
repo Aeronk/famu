@@ -144,6 +144,14 @@ async def process_inbound(session: AsyncSession, msg: InboundMessage) -> str | N
     session.add(AIMessage(tenant_id=tenant_id, conversation_id=conv.id, role=MessageRole.ASSISTANT,
                           content=result.reply, language=Language(result.language)))
 
+    # Capture the WhatsApp message as an NLU training example.
+    from app.datasets.service import DatasetService
+
+    await DatasetService(session, tenant_id).record_nlu(
+        text=msg.text, intent=result.intent, entities=result.entities,
+        channel="whatsapp", created_by=user.id if user else None,
+    )
+
     # Track a pending follow-up so the next message can complete it.
     if result.follow_up and result.intent == "record_vaccination" and result.record_id:
         contact.state = {"awaiting": "vaccine", "record_id": result.record_id}

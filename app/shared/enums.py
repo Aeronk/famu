@@ -177,3 +177,25 @@ class MessageRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+
+
+# ---- Channels & ML training data ----
+class Channel(StrEnum):
+    WEB = "web"
+    MOBILE = "mobile"
+    WHATSAPP = "whatsapp"
+    API = "api"
+    SYSTEM = "system"
+
+
+class DatasetStatus(StrEnum):
+    UNVERIFIED = "unverified"   # captured automatically, awaiting review
+    VERIFIED = "verified"       # human-confirmed label (gold for training)
+    REJECTED = "rejected"       # excluded from training
+
+
+class DatasetName(StrEnum):
+    YIELD = "yield"
+    DISEASE = "disease"
+    NLU_INTENT = "nlu_intent"
+    VISION = "vision"

@@ -33,9 +33,16 @@ async def ask(payload: AskRequest, session: DbSession, user: CurrentUser):
 
 @router.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_perm("ai:read"))])
 async def chat(payload: ChatRequest, session: DbSession, user: CurrentUser, tenant_id: TenantId):
-    """Run the full data-capture agent on free text (also used by WhatsApp)."""
+    """Run the full data-capture agent on free text (web / mobile / API)."""
     deps = AgentDeps(session=session, tenant_id=tenant_id, user_id=user.id)
     reply = await run_agent(payload.text, deps)
+    # Capture the NLU example so the intent/entity extractor can be fine-tuned.
+    from app.datasets.service import DatasetService
+
+    await DatasetService(session, tenant_id).record_nlu(
+        text=payload.text, intent=reply.intent, entities=reply.entities,
+        channel=payload.channel.value, created_by=user.id,
+    )
     return ChatResponse(**reply.model_dump())
 
 

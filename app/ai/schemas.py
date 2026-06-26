@@ -4,7 +4,7 @@ import uuid
 
 from pydantic import BaseModel, Field
 
-from app.shared.enums import ImageAnalysisType, Language
+from app.shared.enums import Channel, ImageAnalysisType, Language
 from app.shared.schemas import ORMModel
 
 
@@ -27,6 +27,7 @@ class AskResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     text: str = Field(min_length=1)
+    channel: Channel = Channel.WEB  # web | mobile | api — feeds NLU training data
 
 
 class ChatResponse(BaseModel):

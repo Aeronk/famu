@@ -83,6 +83,12 @@ class LivestockService:
                 payload={"disease": event.disease, "head_count": event.head_count},
             )
         )
+        try:
+            from app.datasets.service import DatasetService
+
+            await DatasetService(self.session, self.tenant_id).capture_disease(event)
+        except Exception:  # noqa: BLE001
+            pass
         return event
 
     async def add_weight(self, animal_id: uuid.UUID, data: WeightRecordCreate):

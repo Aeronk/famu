@@ -25,6 +25,7 @@ from app.modules.crops.schemas import (
 
 class CropService:
     def __init__(self, session: AsyncSession, tenant_id: uuid.UUID):
+        self.session = session
         self.tenant_id = tenant_id
         self.cycles = CropCycleRepo(session, tenant_id)
         self.inputs = CropInputRepo(session, tenant_id)
@@ -75,6 +76,13 @@ class CropService:
                 payload={"crop_cycle_id": str(cycle_id), "quantity": harvest.quantity},
             )
         )
+        # Capture a structured yield example for AI learning (best-effort).
+        try:
+            from app.datasets.service import DatasetService
+
+            await DatasetService(self.session, self.tenant_id).capture_yield(cycle_id)
+        except Exception:  # noqa: BLE001 — never block the harvest on capture
+            pass
         return harvest
 
     async def list_harvests(self, cycle_id: uuid.UUID) -> list[Harvest]:
