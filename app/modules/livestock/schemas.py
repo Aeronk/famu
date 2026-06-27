@@ -59,6 +59,15 @@ class VaccinationCreate(BaseModel):
     next_due_date: date | None = None
 
 
+class VaccinationUpdate(BaseModel):
+    head_count: int | None = Field(default=None, ge=1)
+    vaccine: str | None = None
+    vaccination_date: date | None = None
+    dose: str | None = None
+    administered_by: str | None = None
+    next_due_date: date | None = None
+
+
 class VaccinationOut(ORMModel):
     id: uuid.UUID
     livestock_id: uuid.UUID | None
@@ -74,6 +83,14 @@ class DiseaseEventCreate(BaseModel):
     livestock_id: uuid.UUID | None = None
     head_count: int = Field(default=1, ge=1)
     disease: str
+    diagnosed_date: date | None = None
+    treatment: str | None = None
+    outcome: str | None = None
+
+
+class DiseaseEventUpdate(BaseModel):
+    head_count: int | None = Field(default=None, ge=1)
+    disease: str | None = None
     diagnosed_date: date | None = None
     treatment: str | None = None
     outcome: str | None = None

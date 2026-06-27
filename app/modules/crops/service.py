@@ -66,6 +66,30 @@ class CropService:
     async def list_inputs(self, cycle_id: uuid.UUID) -> list[CropInput]:
         return await self.inputs.list(crop_cycle_id=cycle_id, limit=500)
 
+    async def update_input(self, input_id: uuid.UUID, data) -> CropInput:
+        obj = await self.inputs.get_or_404(input_id)
+        return await self.inputs.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_input(self, input_id: uuid.UUID) -> None:
+        await self.inputs.delete(await self.inputs.get_or_404(input_id))
+
+    async def update_harvest(self, harvest_id: uuid.UUID, data) -> Harvest:
+        obj = await self.harvests.get_or_404(harvest_id)
+        return await self.harvests.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_harvest(self, harvest_id: uuid.UUID) -> None:
+        await self.harvests.delete(await self.harvests.get_or_404(harvest_id))
+
+    async def list_activities(self, *, offset: int, limit: int):
+        return await self.activities.list(offset=offset, limit=limit), await self.activities.count()
+
+    async def update_activity(self, activity_id: uuid.UUID, data) -> Activity:
+        obj = await self.activities.get_or_404(activity_id)
+        return await self.activities.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_activity(self, activity_id: uuid.UUID) -> None:
+        await self.activities.delete(await self.activities.get_or_404(activity_id))
+
     async def add_harvest(self, cycle_id: uuid.UUID, data: HarvestCreate) -> Harvest:
         await self.cycles.get_or_404(cycle_id)
         harvest = await self.harvests.create(crop_cycle_id=cycle_id, **data.model_dump())

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import CurrentUser, DbSession, Pagination, require_perm
-from app.modules.market.schemas import LatestPrice, MarketPriceCreate, MarketPriceOut
+from app.modules.market.schemas import (
+    LatestPrice,
+    MarketPriceCreate,
+    MarketPriceOut,
+    MarketPriceUpdate,
+)
 from app.modules.market.service import MarketService
 from app.shared.enums import Role
+from app.shared.schemas import Message
 
 router = APIRouter(prefix="/market", tags=["market"])
 
@@ -32,3 +40,14 @@ async def list_prices(
 @router.get("/prices/latest", response_model=list[LatestPrice], dependencies=[Depends(require_perm("market:read"))])
 async def latest_prices(user: CurrentUser, session: DbSession):
     return await MarketService(session, user.tenant_id).latest()
+
+
+@router.patch("/prices/{price_id}", response_model=MarketPriceOut, dependencies=[Depends(require_perm("market:update"))])
+async def update_price(price_id: uuid.UUID, payload: MarketPriceUpdate, user: CurrentUser, session: DbSession):
+    return await MarketService(session, user.tenant_id).update(price_id, payload)
+
+
+@router.delete("/prices/{price_id}", response_model=Message, dependencies=[Depends(require_perm("market:delete"))])
+async def delete_price(price_id: uuid.UUID, user: CurrentUser, session: DbSession):
+    await MarketService(session, user.tenant_id).delete(price_id)
+    return Message(message="Price deleted")

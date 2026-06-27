@@ -65,6 +65,35 @@ class FinanceService:
     async def list_credits(self):
         return await self.credits.list(limit=500)
 
+    # ---- update / delete (full CRUD) ----
+    async def update_expense(self, expense_id, data):
+        obj = await self.expenses.get_or_404(expense_id)
+        return await self.expenses.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_expense(self, expense_id):
+        await self.expenses.delete(await self.expenses.get_or_404(expense_id))
+
+    async def update_income(self, income_id, data):
+        obj = await self.incomes.get_or_404(income_id)
+        return await self.incomes.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_income(self, income_id):
+        await self.incomes.delete(await self.incomes.get_or_404(income_id))
+
+    async def update_loan(self, loan_id, data):
+        obj = await self.loans.get_or_404(loan_id)
+        return await self.loans.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_loan(self, loan_id):
+        await self.loans.delete(await self.loans.get_or_404(loan_id))
+
+    async def update_credit(self, credit_id, data):
+        obj = await self.credits.get_or_404(credit_id)
+        return await self.credits.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_credit(self, credit_id):
+        await self.credits.delete(await self.credits.get_or_404(credit_id))
+
     # ---- reports ----
     async def _sum(self, model) -> float:
         stmt = select(func.coalesce(func.sum(model.amount), 0)).where(model.tenant_id == self.tid)

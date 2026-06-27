@@ -20,6 +20,15 @@ class ExpenseCreate(BaseModel):
     description: str | None = None
 
 
+class ExpenseUpdate(BaseModel):
+    category: str | None = None
+    amount: float | None = Field(default=None, gt=0)
+    currency: str | None = None
+    txn_date: date | None = None
+    description: str | None = None
+    farm_id: uuid.UUID | None = None
+
+
 class ExpenseOut(ORMModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
@@ -45,6 +54,15 @@ class IncomeCreate(BaseModel):
     description: str | None = None
 
 
+class IncomeUpdate(BaseModel):
+    source: str | None = None
+    amount: float | None = Field(default=None, gt=0)
+    currency: str | None = None
+    txn_date: date | None = None
+    description: str | None = None
+    farm_id: uuid.UUID | None = None
+
+
 class IncomeOut(ORMModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
@@ -68,6 +86,15 @@ class LoanCreate(BaseModel):
     status: LoanStatus = LoanStatus.ACTIVE
 
 
+class LoanUpdate(BaseModel):
+    lender: str | None = None
+    principal: float | None = Field(default=None, gt=0)
+    interest_rate: float | None = Field(default=None, ge=0)
+    balance: float | None = Field(default=None, ge=0)
+    due_date: date | None = None
+    status: LoanStatus | None = None
+
+
 class LoanOut(ORMModel):
     id: uuid.UUID
     lender: str
@@ -88,6 +115,14 @@ class InputCreditCreate(BaseModel):
     issued_date: date | None = None
     repayment_due: date | None = None
     status: CreditStatus = CreditStatus.ISSUED
+
+
+class InputCreditUpdate(BaseModel):
+    provider: str | None = None
+    item: str | None = None
+    value: float | None = Field(default=None, gt=0)
+    repayment_due: date | None = None
+    status: CreditStatus | None = None
 
 
 class InputCreditOut(ORMModel):

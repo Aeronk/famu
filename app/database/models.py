@@ -10,6 +10,7 @@ from app.ai.models import AIConversation, AIMessage, ImageAnalysis  # noqa: F401
 from app.ai.rag.models import KnowledgeChunk, KnowledgeDocument  # noqa: F401
 from app.database.base import Base  # noqa: F401,E402
 from app.datasets.models import TrainingExample  # noqa: F401
+from app.media.models import Attachment  # noqa: F401
 from app.modules.auth.models import RefreshToken, User  # noqa: F401
 from app.modules.crops.models import Activity, CropCycle, CropInput, Harvest  # noqa: F401
 from app.modules.farms.models import Farm  # noqa: F401

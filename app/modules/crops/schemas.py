@@ -58,6 +58,15 @@ class CropInputCreate(BaseModel):
     applied_date: date | None = None
 
 
+class CropInputUpdate(BaseModel):
+    type: InputType | None = None
+    name: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    cost: float | None = Field(default=None, ge=0)
+    applied_date: date | None = None
+
+
 class CropInputOut(ORMModel):
     id: uuid.UUID
     crop_cycle_id: uuid.UUID
@@ -74,6 +83,14 @@ class HarvestCreate(BaseModel):
     harvest_date: date | None = None
     quantity: float = Field(ge=0)
     unit: str = "kg"
+    quality_grade: str | None = None
+    revenue: float | None = Field(default=None, ge=0)
+
+
+class HarvestUpdate(BaseModel):
+    harvest_date: date | None = None
+    quantity: float | None = Field(default=None, ge=0)
+    unit: str | None = None
     quality_grade: str | None = None
     revenue: float | None = Field(default=None, ge=0)
 
@@ -98,6 +115,12 @@ class ActivityCreate(BaseModel):
     activity_date: date | None = None
     source: ActivitySource = ActivitySource.MANUAL
     meta: dict = Field(default_factory=dict)
+
+
+class ActivityUpdate(BaseModel):
+    type: str | None = None
+    description: str | None = None
+    activity_date: date | None = None
 
 
 class ActivityOut(ORMModel):

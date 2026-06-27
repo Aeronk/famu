@@ -18,6 +18,16 @@ class MarketPriceCreate(BaseModel):
     source: str | None = None
 
 
+class MarketPriceUpdate(BaseModel):
+    commodity: str | None = None
+    market: str | None = None
+    price: float | None = Field(default=None, gt=0)
+    currency: str | None = None
+    unit: str | None = None
+    price_date: date | None = None
+    source: str | None = None
+
+
 class MarketPriceOut(ORMModel):
     id: uuid.UUID
     tenant_id: uuid.UUID | None

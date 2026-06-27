@@ -71,6 +71,31 @@ class TobaccoService:
             net_value=net,
         )
 
+    # ---- stage listings + delete (full CRUD) ----
+    async def list_reaping(self, cycle_id: uuid.UUID):
+        return await self.reaping.list(tobacco_cycle_id=cycle_id, limit=1000)
+
+    async def list_curing(self, cycle_id: uuid.UUID):
+        return await self.curing.list(tobacco_cycle_id=cycle_id, limit=1000)
+
+    async def list_grading(self, cycle_id: uuid.UUID):
+        return await self.grading.list(tobacco_cycle_id=cycle_id, limit=1000)
+
+    async def list_deliveries(self, cycle_id: uuid.UUID):
+        return await self.deliveries.list(tobacco_cycle_id=cycle_id, limit=1000)
+
+    async def delete_reaping(self, rid: uuid.UUID):
+        await self.reaping.delete(await self.reaping.get_or_404(rid))
+
+    async def delete_curing(self, cid: uuid.UUID):
+        await self.curing.delete(await self.curing.get_or_404(cid))
+
+    async def delete_grading(self, gid: uuid.UUID):
+        await self.grading.delete(await self.grading.get_or_404(gid))
+
+    async def delete_delivery(self, did: uuid.UUID):
+        await self.deliveries.delete(await self.deliveries.get_or_404(did))
+
     async def profitability(
         self, cycle_id: uuid.UUID, *, estimated_costs: float = 0.0
     ) -> ProfitabilityReport:

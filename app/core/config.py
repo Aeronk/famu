@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     WEATHER_PROVIDER: str = "openweather"
     WEATHER_API_KEY: str = ""
 
+    # ---- Media / file uploads ----
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_MB: int = 10
+
     # ---- AI training data / national AI sharing ----
     # Salt for pseudonymizing farmers in shared datasets (defaults from SECRET_KEY).
     ANON_SALT: str = ""

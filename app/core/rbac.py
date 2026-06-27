@@ -30,6 +30,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "analytics:*",
         "notification:*",
         "dataset:*",
+        "media:*",
     },
     Role.FARM_MANAGER: {
         "farm:*",
@@ -45,6 +46,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "analytics:read",
         "notification:read",
         "dataset:*",
+        "media:*",
     },
     Role.FARMER: {
         "farm:read",
@@ -61,6 +63,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "prediction:read",
         "simulation:read",
         "analytics:read",
+        "media:*",
     },
     Role.EXTENSION_OFFICER: {
         "farm:read",
@@ -76,6 +79,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "analytics:read",
         "notification:create",
         "dataset:*",
+        "media:*",
     },
     Role.VIEWER: {
         "farm:read",
@@ -86,6 +90,7 @@ PERMISSIONS: dict[Role, set[str]] = {
         "weather:read",
         "market:read",
         "analytics:read",
+        "media:read",
     },
 }
 

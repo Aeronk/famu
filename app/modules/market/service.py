@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.market.models import MarketPrice
 from app.modules.market.schemas import LatestPrice, MarketPriceCreate
+from app.shared.exceptions import NotFoundError
 
 
 class MarketService:
@@ -54,6 +55,27 @@ class MarketService:
             )
             for r in sorted(latest.values(), key=lambda x: x.commodity)
         ]
+
+    async def _owned(self, price_id) -> MarketPrice:
+        stmt = select(MarketPrice).where(
+            MarketPrice.id == price_id, MarketPrice.tenant_id == str(self.tenant_id)
+        )
+        price = (await self.session.execute(stmt)).scalar_one_or_none()
+        if not price:
+            raise NotFoundError("Market price not found")
+        return price
+
+    async def update(self, price_id, data) -> MarketPrice:
+        price = await self._owned(price_id)
+        for k, v in data.model_dump(exclude_unset=True).items():
+            setattr(price, k, v)
+        await self.session.flush()
+        return price
+
+    async def delete(self, price_id) -> None:
+        price = await self._owned(price_id)
+        await self.session.delete(price)
+        await self.session.flush()
 
     async def latest_price_for(self, commodity: str) -> float | None:
         for lp in await self.latest():

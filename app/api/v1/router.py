@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.ai.router import router as ai_router
 from app.analytics.router import router as analytics_router
 from app.datasets.router import router as datasets_router
+from app.media.router import router as media_router
 from app.modules.auth.router import router as auth_router
 from app.modules.crops.router import router as crops_router
 from app.modules.farms.router import router as farms_router
@@ -38,5 +39,6 @@ for r in (
     analytics_router,
     notifications_router,
     datasets_router,
+    media_router,
 ):
     api_router.include_router(r)

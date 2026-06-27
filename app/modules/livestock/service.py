@@ -105,6 +105,45 @@ class LivestockService:
     async def add_feed(self, data: FeedRecordCreate):
         return await self.feed.create(**data.model_dump())
 
+    # ---- event list / update / delete (full CRUD) ----
+    async def list_vaccinations(self, *, offset: int, limit: int):
+        return await self.vaccinations.list(offset=offset, limit=limit), await self.vaccinations.count()
+
+    async def update_vaccination(self, vac_id: uuid.UUID, data):
+        obj = await self.vaccinations.get_or_404(vac_id)
+        return await self.vaccinations.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_vaccination(self, vac_id: uuid.UUID):
+        await self.vaccinations.delete(await self.vaccinations.get_or_404(vac_id))
+
+    async def list_diseases(self, *, offset: int, limit: int):
+        return await self.diseases.list(offset=offset, limit=limit), await self.diseases.count()
+
+    async def update_disease(self, event_id: uuid.UUID, data):
+        obj = await self.diseases.get_or_404(event_id)
+        return await self.diseases.update(obj, **data.model_dump(exclude_unset=True))
+
+    async def delete_disease(self, event_id: uuid.UUID):
+        await self.diseases.delete(await self.diseases.get_or_404(event_id))
+
+    async def list_weights(self, animal_id: uuid.UUID):
+        return await self.weights.list(livestock_id=animal_id, limit=500)
+
+    async def delete_weight(self, weight_id: uuid.UUID):
+        await self.weights.delete(await self.weights.get_or_404(weight_id))
+
+    async def list_breeding(self, *, offset: int, limit: int):
+        return await self.breeding.list(offset=offset, limit=limit), await self.breeding.count()
+
+    async def delete_breeding(self, breeding_id: uuid.UUID):
+        await self.breeding.delete(await self.breeding.get_or_404(breeding_id))
+
+    async def list_feed(self, *, offset: int, limit: int):
+        return await self.feed.list(offset=offset, limit=limit), await self.feed.count()
+
+    async def delete_feed(self, feed_id: uuid.UUID):
+        await self.feed.delete(await self.feed.get_or_404(feed_id))
+
     # ---- analytics ----
     async def herd_analytics(self) -> HerdAnalytics:
         tid = str(self.tenant_id)
