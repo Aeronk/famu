@@ -58,6 +58,19 @@ class TenantStatus(StrEnum):
     SUSPENDED = "suspended"
 
 
+class FarmingType(StrEnum):
+    COMMERCIAL = "commercial"
+    PERSONAL = "personal"
+    SUBSISTENCE = "subsistence"
+    MIXED = "mixed"
+
+
+class EnterpriseType(StrEnum):
+    CROPS = "crops"
+    LIVESTOCK = "livestock"
+    MIXED = "mixed"
+
+
 # ---- Crops ----
 class CropType(StrEnum):
     MAIZE = "maize"

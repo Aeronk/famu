@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database.base import Base
 from app.database.mixins import TenantEntity
 from app.database.types import GUID
+from app.shared.enums import EnterpriseType, FarmingType, enum_type
 
 
 class Farm(Base, TenantEntity):
@@ -25,6 +26,14 @@ class Farm(Base, TenantEntity):
     district: Mapped[str | None] = mapped_column(String(80), nullable=True)
     ward: Mapped[str | None] = mapped_column(String(80), nullable=True)
     village: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    # Classification (strong signals for AI; commercial vs personal etc.)
+    farming_type: Mapped[FarmingType] = mapped_column(
+        enum_type(FarmingType), default=FarmingType.PERSONAL, nullable=False
+    )
+    enterprise_type: Mapped[EnterpriseType] = mapped_column(
+        enum_type(EnterpriseType), default=EnterpriseType.MIXED, nullable=False
+    )
 
     # Agronomy
     soil_type: Mapped[str | None] = mapped_column(String(80), nullable=True)

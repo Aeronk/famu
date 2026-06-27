@@ -126,7 +126,11 @@ class DatasetService:
             "has_variety": bool(cycle.variety),
             "planting_month": cycle.planting_date.month if cycle.planting_date else None,
             "province": farm.province if farm else None,
+            "district": farm.district if farm else None,
+            "farming_type": farm.farming_type.value if farm else None,
+            "enterprise_type": farm.enterprise_type.value if farm else None,
             "soil_type": farm.soil_type if farm else None,
+            "water_source": farm.water_source if farm else None,
             "irrigation_type": farm.irrigation_type if farm else None,
             "fertilizer_kg": fert_kg,
             "input_cost": round(input_cost, 2),
@@ -221,18 +225,45 @@ class DatasetService:
         datasets = sorted(agg.values(), key=lambda x: x["dataset"])
         return {"datasets": datasets, "total_examples": sum(d["total"] for d in datasets)}
 
-    async def export_rows(self, *, dataset: str, status: DatasetStatus | None) -> list[dict]:
+    @staticmethod
+    def flatten(ex) -> dict:
+        row = {"id": str(ex.id), "status": ex.status.value, "channel": ex.channel}
+        row.update({f"feature.{k}": v for k, v in (ex.features or {}).items()})
+        row.update({f"label.{k}": v for k, v in (ex.label or {}).items()})
+        return row
+
+    async def export_rows(
+        self, *, dataset: str, status: DatasetStatus | None, anonymize: bool = True
+    ) -> list[dict]:
+        from app.datasets.anonymize import anonymize_row
+
         filters: dict = {"dataset": dataset}
         if status:
             filters["status"] = status
         examples = await self.repo.list(limit=100000, **filters)
-        rows = []
+        rows = [self.flatten(ex) for ex in examples]
+        return [anonymize_row(r) for r in rows] if anonymize else rows
+
+    async def feed_national(self, *, dataset: str, status: DatasetStatus | None) -> dict:
+        """Anonymize and push examples to the national AI; mark them as shared."""
+        from datetime import UTC, datetime
+
+        from app.datasets.anonymize import anonymize_row
+        from app.datasets.national import feed_national as send
+
+        filters: dict = {"dataset": dataset}
+        if status:
+            filters["status"] = status
+        examples = await self.repo.list(limit=100000, **filters)
+        rows = [anonymize_row(self.flatten(ex)) for ex in examples]
+        result = await send(dataset, rows)
+
+        now = datetime.now(UTC)
         for ex in examples:
-            row = {"id": str(ex.id), "status": ex.status.value, "channel": ex.channel}
-            row.update({f"feature.{k}": v for k, v in (ex.features or {}).items()})
-            row.update({f"label.{k}": v for k, v in (ex.label or {}).items()})
-            rows.append(row)
-        return rows
+            ex.shared_national = True
+            ex.shared_at = now
+        await self.session.flush()
+        return result
 
 
 def _to_kg(quantity: float, unit: str | None) -> float:

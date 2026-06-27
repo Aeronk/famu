@@ -16,7 +16,8 @@ from app.datasets.schemas import (
     TrainingExampleUpdate,
 )
 from app.datasets.service import DatasetService
-from app.shared.enums import DatasetStatus
+from app.shared.enums import DatasetStatus, Role
+from app.shared.exceptions import PermissionDeniedError
 from app.shared.schemas import Page
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
@@ -63,15 +64,33 @@ async def build_yield(session: DbSession, tenant_id: TenantId):
     return {"dataset": "yield", "examples_built": count}
 
 
+@router.post("/feed-national", dependencies=[Depends(require_perm("dataset:export"))])
+async def feed_national(
+    session: DbSession,
+    tenant_id: TenantId,
+    dataset: str = Query(...),
+    status: DatasetStatus | None = Query(DatasetStatus.VERIFIED, description="Default: only verified (gold) examples"),
+):
+    """Anonymize and feed examples to the national AI service (always anonymized)."""
+    return await DatasetService(session, tenant_id).feed_national(dataset=dataset, status=status)
+
+
 @router.get("/export", dependencies=[Depends(require_perm("dataset:export"))])
 async def export_dataset(
     session: DbSession,
     tenant_id: TenantId,
+    user: CurrentUser,
     dataset: str = Query(...),
     format: str = Query("jsonl", pattern="^(jsonl|csv)$"),
     status: DatasetStatus | None = Query(None),
+    anonymize: bool = Query(True, description="Strip identifiers (default). Raw export needs Super Admin."),
 ):
-    rows = await DatasetService(session, tenant_id).export_rows(dataset=dataset, status=status)
+    # Privacy: only Super Admin may export raw (de-anonymized) data.
+    if not anonymize and user.role != Role.SUPER_ADMIN:
+        raise PermissionDeniedError("Raw export requires Super Admin; use anonymize=true")
+    rows = await DatasetService(session, tenant_id).export_rows(
+        dataset=dataset, status=status, anonymize=anonymize
+    )
 
     if format == "csv":
         buf = io.StringIO()

@@ -197,17 +197,27 @@ async function renderFarms(){
       <div><label>Water source</label><input id="f_water"/></div>
       <div><label>Irrigation</label><input id="f_irr"/></div>
     </div>
+    <div class="row3">
+      <div><label>Farming type</label><select id="f_ftype">
+        <option value="personal">personal</option><option value="commercial">commercial</option>
+        <option value="subsistence">subsistence</option><option value="mixed">mixed</option></select></div>
+      <div><label>Enterprise</label><select id="f_ent">
+        <option value="mixed">mixed</option><option value="crops">crops</option>
+        <option value="livestock">livestock</option></select></div>
+      <div><label>District</label><input id="f_dist"/></div>
+    </div>
     <button class="btn" onclick="addFarm()">Create farm</button><div id="f_err" class="err"></div>
   </div>
   <div class="section"><h3>Your farms (${p.total})</h3>
-    <table><tr><th>Name</th><th>Province</th><th>Size</th><th>Soil</th><th>Irrigation</th></tr>
-    ${p.items.map(f=>`<tr><td>${esc(f.name)}</td><td>${esc(f.province)||'-'}</td><td>${f.size_ha??'-'}</td><td>${esc(f.soil_type)||'-'}</td><td>${esc(f.irrigation_type)||'-'}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No farms yet.</td></tr>'}
+    <table><tr><th>Name</th><th>Type</th><th>Enterprise</th><th>Province</th><th>Size</th><th>Irrigation</th></tr>
+    ${p.items.map(f=>`<tr><td>${esc(f.name)}</td><td><span class="pill">${esc(f.farming_type)}</span></td><td>${esc(f.enterprise_type)}</td><td>${esc(f.province)||'-'}</td><td>${f.size_ha??'-'}</td><td>${esc(f.irrigation_type)||'-'}</td></tr>`).join('')||'<tr><td colspan=6 class=muted>No farms yet.</td></tr>'}
     </table></div>`;
 }
 async function addFarm(){
   try{
     await api('/farms',{method:'POST',body:{
-      name:val('f_name'),province:val('f_prov'),size_ha:num('f_size'),
+      name:val('f_name'),province:val('f_prov'),district:val('f_dist'),size_ha:num('f_size'),
+      farming_type:val('f_ftype'),enterprise_type:val('f_ent'),
       soil_type:val('f_soil'),water_source:val('f_water'),irrigation_type:val('f_irr')}});
     renderFarms();
   }catch(e){ document.getElementById('f_err').textContent=e.message; }
@@ -435,8 +445,10 @@ async function renderData(){
     <div style="margin-top:12px">
       <button class="btn ghost" onclick="exportData('jsonl')">⬇ Export JSONL</button>
       <button class="btn ghost" onclick="exportData('csv')">⬇ Export CSV</button>
+      <button class="btn" onclick="feedNational()">🏛 Feed to National AI</button>
       <span class="muted" id="d_msg"></span>
     </div>
+    <p class="src">🔒 Exports &amp; national sharing are <b>anonymized</b> — farmers are replaced by salted pseudonyms and granular location/PII is stripped. National feed shares verified examples only.</p>
   </div>
   <div class="section"><div id="d_list" class="muted">Loading examples…</div></div>`;
   if(stats.datasets.length){ document.getElementById('d_set').value=dataFilter.dataset; }
@@ -474,14 +486,21 @@ async function setStatus(id,status){
 }
 async function exportData(format){
   const ds=val('d_set')||'yield';
-  const q=new URLSearchParams({dataset:ds,format});
+  const q=new URLSearchParams({dataset:ds,format});  // anonymized by default
   if(val('d_status')) q.set('status',val('d_status'));
   const res=await fetch(API+'/datasets/export?'+q.toString(),{headers:{Authorization:'Bearer '+token}});
   if(!res.ok){ document.getElementById('d_msg').textContent='Export failed'; return; }
   const blob=await res.blob();
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=ds+'.'+format; a.click(); URL.revokeObjectURL(a.href);
-  document.getElementById('d_msg').textContent=`Exported ${ds}.${format}`;
+  document.getElementById('d_msg').textContent=`Exported ${ds}.${format} (anonymized)`;
+}
+async function feedNational(){
+  const ds=val('d_set')||'yield';
+  document.getElementById('d_msg').textContent='Feeding national AI…';
+  try{ const r=await api('/datasets/feed-national?dataset='+encodeURIComponent(ds),{method:'POST'});
+    document.getElementById('d_msg').textContent=`Sent ${r.sent} ${ds} example(s) — ${r.status}.`; renderData();
+  }catch(e){ document.getElementById('d_msg').textContent=e.message; }
 }
 
 /* ---------------- helpers ---------------- */

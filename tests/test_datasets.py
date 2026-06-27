@@ -76,7 +76,46 @@ async def test_verify_and_export(client):
     yield_stat = next(d for d in stats["datasets"] if d["dataset"] == "yield")
     assert yield_stat["verified"] == 1
 
-    # Export JSONL
+    # Export JSONL (anonymized by default)
     exp = await client.get("/api/v1/datasets/export?dataset=yield&format=jsonl", headers=h)
     assert exp.status_code == 200
     assert "feature.crop" in exp.text and "label.yield_tonnes" in exp.text
+
+
+async def test_export_is_anonymized_by_default(client):
+    h, cycle = await _setup(client)
+    await client.post(f"/api/v1/crops/cycles/{cycle['id']}/harvests", json={"quantity": 1000, "unit": "kg"}, headers=h)
+    exp = await client.get("/api/v1/datasets/export?dataset=yield&format=jsonl", headers=h)
+    # Raw row id is replaced by a salted pseudonym ("subject").
+    assert '"subject"' in exp.text
+    assert '"id"' not in exp.text
+
+
+async def test_raw_export_forbidden_for_tenant_admin(client):
+    h, cycle = await _setup(client)
+    await client.post(f"/api/v1/crops/cycles/{cycle['id']}/harvests", json={"quantity": 1000, "unit": "kg"}, headers=h)
+    resp = await client.get("/api/v1/datasets/export?dataset=yield&anonymize=false", headers=h)
+    assert resp.status_code == 403  # only Super Admin may export de-anonymized data
+
+
+async def test_feed_national_stub_marks_shared(client):
+    h, cycle = await _setup(client)
+    await client.post(f"/api/v1/crops/cycles/{cycle['id']}/harvests", json={"quantity": 1000, "unit": "kg"}, headers=h)
+    ex_id = (await client.get("/api/v1/datasets/examples?dataset=yield", headers=h)).json()["items"][0]["id"]
+    await client.patch(f"/api/v1/datasets/examples/{ex_id}", json={"status": "verified"}, headers=h)
+
+    resp = await client.post("/api/v1/datasets/feed-national?dataset=yield", headers=h)
+    body = resp.json()
+    assert body["status"] == "stub"   # no NATIONAL_AI_ENDPOINT configured
+    assert body["sent"] == 1
+
+
+async def test_farm_type_in_yield_features(client):
+    data = await register_tenant(client, "type-farm", "type@example.com")
+    h = auth_header(data["tokens"]["access_token"])
+    farm = (await client.post("/api/v1/farms", json={"name": "Commercial Estate", "farming_type": "commercial", "enterprise_type": "crops"}, headers=h)).json()
+    assert farm["farming_type"] == "commercial"
+    cycle = (await client.post("/api/v1/crops/cycles", json={"farm_id": farm["id"], "crop_type": "maize", "area_ha": 5}, headers=h)).json()
+    await client.post(f"/api/v1/crops/cycles/{cycle['id']}/harvests", json={"quantity": 20000, "unit": "kg"}, headers=h)
+    ex = (await client.get("/api/v1/datasets/examples?dataset=yield", headers=h)).json()["items"][0]
+    assert ex["features"]["farming_type"] == "commercial"

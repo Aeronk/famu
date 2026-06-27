@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -36,3 +37,6 @@ class TrainingExample(Base, TenantEntity):
         GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Privacy: tracks anonymized sharing to the national AI.
+    shared_national: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

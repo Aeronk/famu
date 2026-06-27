@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     WEATHER_PROVIDER: str = "openweather"
     WEATHER_API_KEY: str = ""
 
+    # ---- AI training data / national AI sharing ----
+    # Salt for pseudonymizing farmers in shared datasets (defaults from SECRET_KEY).
+    ANON_SALT: str = ""
+    NATIONAL_AI_ENDPOINT: str = ""   # blank => feed runs in mock/log mode
+    NATIONAL_AI_API_KEY: str = ""
+
     # ---- Notifications ----
     SMS_PROVIDER: str = ""
     SMS_API_KEY: str = ""
@@ -110,6 +116,10 @@ class Settings(BaseSettings):
     @property
     def sms_enabled(self) -> bool:
         return bool(self.SMS_API_KEY)
+
+    @property
+    def national_ai_enabled(self) -> bool:
+        return bool(self.NATIONAL_AI_ENDPOINT)
 
     @property
     def email_enabled(self) -> bool:
